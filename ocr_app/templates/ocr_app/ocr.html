@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-Tractor - OCR Text Extractor</title>
+    <link rel="icon" type="image/svg+xml" href="{% load static %}{% static 'favicon.svg' %}">
+    <link rel="shortcut icon" href="{% load static %}{% static 'favicon.svg' %}">
+    <link rel="apple-touch-icon" href="{% load static %}{% static 'favicon.svg' %}">
+    <!-- Fallback favicon using data URL -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='grad1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23667eea;stop-opacity:1' /><stop offset='100%25' style='stop-color:%23764ba2;stop-opacity:1' /></linearGradient></defs><circle cx='16' cy='16' r='15' fill='url(%23grad1)'/><path d='M8 8 L24 24 M24 8 L8 24' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .typing-animation {
+            overflow: hidden;
+            border-right: 3px solid white;
+            white-space: nowrap;
+            animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: white; }
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            animation: fadeInUp 1s ease-out 1s both;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 0.9;
+                transform: translateY(0);
+            }
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInUp 1s ease-out 1.5s both;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .upload-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .upload-btn:hover::before {
+            left: 100%;
+        }
+        
+        .form {
+            margin-bottom: 30px;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .result-box {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 200px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        .processing-text {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .dots {
+            display: inline-block;
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ""; }
+            40% { content: "."; }
+            60% { content: ".."; }
+            80%, 100% { content: "..."; }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        .file-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            animation: slideInUp 0.5s ease-out;
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+        
+        .file-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .processing-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        .info-icon {
+            font-size: 1.2rem;
+            margin-right: 8px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-5px); }
+            60% { transform: translateY(-3px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="typing-animation">Welcome to X-Tractor</h1>
+            <p>Extract text from images using AI-powered OCR</p>
+        </div>
+        
+        <div class="content">
+            <form method="post" enctype="multipart/form-data" class="form" id="ocrForm">
+                {% csrf_token %}
+                <div class="upload-section">
+                    <input type="file" name="image" id="image" class="file-input" accept="image/*" required>
+                    <label for="image" class="upload-btn">Choose Image</label>
+                </div>
+                
+                <div id="fileInfo" class="file-info" style="display: none;">
+                    <span class="info-icon">📁</span>
+                    <strong>Selected File:</strong> <span id="filename">None</span>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button type="submit" class="submit-btn" id="submitBtn">Extract Text</button>
+                </div>
+            </form>
+            
+            {% if extracted_text %}
+            <div class="result-section">
+                <h3 style="margin-bottom: 15px; color: #333;">Extracted Text:</h3>
+                <div class="result-box success">
+                    {{ extracted_text }}
+                </div>
+                {% if processing_time %}
+                <div class="processing-info">
+                    <span class="info-icon">⏱️</span>
+                    <strong>Processing Time:</strong> {{ processing_time }}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if error_message %}
+            <div class="result-section">
+                <h3 style="margin-bottom: 15px; color: #333;">Error:</h3>
+                <div class="result-box error">
+                    {{ error_message }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        // Clear form and results only on fresh page load (not after form submission)
+        window.addEventListener('load', function() {
+            // Check if this is a fresh page load (not after form submission)
+            if (!document.querySelector('.result-section')) {
+                // Clear file input
+                document.getElementById('image').value = '';
+                
+                // Hide file info
+                document.getElementById('fileInfo').style.display = 'none';
+                
+                // Reset form
+                document.getElementById('ocrForm').reset();
+            }
+        });
+        
+        // Show selected filename in styled div with animation
+        document.getElementById('image').addEventListener('change', function(e) {
+            const filename = e.target.files[0] ? e.target.files[0].name : 'None';
+            const fileInfo = document.getElementById('fileInfo');
+            const filenameSpan = document.getElementById('filename');
+            
+            filenameSpan.textContent = filename;
+            
+            if (e.target.files[0]) {
+                fileInfo.style.display = 'block';
+                fileInfo.style.animation = 'slideInUp 0.5s ease-out';
+            } else {
+                fileInfo.style.display = 'none';
+            }
+        });
+        
+        // Handle form submission with enhanced loading state
+        document.getElementById('ocrForm').addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+            
+            // Add enhanced loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = `
+                <div class="spinner"></div>
+                <div class="processing-text">Processing image<span class="dots"></span></div>
+                <p>This may take a few seconds</p>
+            `;
+            
+            // Insert loading after form
+            this.parentNode.insertBefore(loadingDiv, this.nextSibling);
+            
+            // Animate dots
+            let dots = 0;
+            const dotsInterval = setInterval(() => {
+                const dotsElement = loadingDiv.querySelector('.dots');
+                if (dotsElement) {
+                    dots = (dots + 1) % 4;
+                    dotsElement.textContent = '.'.repeat(dots);
+                }
+            }, 500);
+            
+            // Re-enable button after a timeout (in case of errors)
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                clearInterval(dotsInterval);
+                if (loadingDiv.parentNode) {
+                    loadingDiv.parentNode.removeChild(loadingDiv);
+                }
+            }, 30000); // 30 second timeout
+        });
+        
+        // Clear results when user starts a new upload (but keep current results if they exist)
+        document.getElementById('image').addEventListener('change', function() {
+            // Only clear results if user is starting a new upload
+            const resultSections = document.querySelectorAll('.result-section');
+            if (resultSections.length > 0) {
+                resultSections.forEach(section => {
+                    section.remove();
+                });
+            }
+        });
+    </script>
+</body>
+</html> 
