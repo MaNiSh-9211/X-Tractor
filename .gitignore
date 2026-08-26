@@ -174,3 +174,5 @@ tmp/
 # Backup files
 *.bak
 *.backup 
+# --- security: local env & deps ---
+node_modules/
